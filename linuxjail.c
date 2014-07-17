@@ -14,13 +14,13 @@ extern struct uwsgi_server uwsgi;
 #include <signal.h>
 #include <stdio.h>
 
-void mount_proc();
-void create_dev ();
-void create_private_fs ();
-void unmount_recursive(const char *dir);
-void map_id(const char *, uint32_t, uint32_t);
+static void mount_proc();
+static void create_dev ();
+static void create_private_fs ();
+static void unmount_recursive(const char *dir);
+static void map_id(const char *, uint32_t, uint32_t);
 
-int pre_jail() {
+static void jail() {
     uid_t real_euid = geteuid();
     gid_t real_egid = getegid();
 
@@ -38,10 +38,7 @@ int pre_jail() {
     map_id("/proc/self/gid_map", 0, real_egid);
 }
 
-void post_jail() {}
-void as_root() {}
-
-void create_private_fs () {
+static void create_private_fs () {
     char *newroot = "/tmp/nsrootXXXXXX";
     mkdtemp(newroot);
 
@@ -71,12 +68,12 @@ void create_private_fs () {
     free(orig_root);
 }
 
-void unmount_recursive(const char *dir) {
+static void unmount_recursive(const char *dir) {
     // TODO: uwsgi or util-linux solution?
     umount(dir);
 }
 
-void create_dev () {
+static void create_dev () {
     /* create a minimal /dev structure */
     dev_t dev;
 
@@ -103,13 +100,13 @@ void create_dev () {
     symlink("/proc/self/fd/2", "/dev/stderr");
 }
 
-void mount_proc() {
+static void mount_proc() {
     mkdir("/proc", 0555);
     mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL);
 }
 
 /* from util-linux unshare.c */
-void map_id(const char *file, uint32_t from, uint32_t to) {
+static void map_id(const char *file, uint32_t from, uint32_t to) {
     char buf[1024];
     int fd;
 
@@ -127,6 +124,9 @@ void map_id(const char *file, uint32_t from, uint32_t to) {
     close(fd);
 }
 
+static struct uwsgi_option uwsgi_linuxjail_options[] = {}
+
 struct uwsgi_plugin linuxjail_plugin = {
+    .jail = jail,
     .name = "linuxjail"
 };
