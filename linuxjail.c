@@ -17,23 +17,19 @@ static void jail() {
     //unshare_flags = CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWUSER;
 
     if (-1 == unshare(CLONE_NEWUSER)) {
-        uwsgi_error("unshare(CLONE_NEWUSER) failed");
-        exit(1);
+        uwsgi_fatal_error("unshare(CLONE_NEWUSER) failed");
     }
 
     if (-1 == unshare(CLONE_NEWIPC)) {
-        uwsgi_error("unshare(CLONE_NEWIPC) failed");
-        exit(1);
+        uwsgi_fatal_error("unshare(CLONE_NEWIPC) failed");
     }
 
     if (-1 == unshare(CLONE_NEWUTS)) {
-        uwsgi_error("unshare(CLONE_NEWUTS) failed");
-        exit(1);
+        uwsgi_fatal_error("unshare(CLONE_NEWUTS) failed");
     }
 
     if (-1 == unshare(CLONE_NEWNS)) {
-        uwsgi_error("unshare(CLONE_NEWNS) failed");
-        exit(1);
+        uwsgi_fatal_error("unshare(CLONE_NEWNS) failed");
     }
 
     create_private_fs();
@@ -45,8 +41,7 @@ static void jail() {
 static void create_private_fs () {
     char newroot[] = "/tmp/nsroot-XXXXXX";
     if (NULL == mkdtemp(newroot)) {
-       uwsgi_error("mkdtemp");
-       exit(1);
+       uwsgi_fatal_error("mkdtemp");
     };
 
     mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
@@ -57,8 +52,7 @@ static void create_private_fs () {
     pivot_root(newroot, orig_root);
 
     if (chdir("/") != 0) {
-        uwsgi_error("chdir(/)");
-        exit(1);
+        uwsgi_fatal_error("chdir(/)");
     }
 
     create_dev();
@@ -87,8 +81,7 @@ static void create_dev () {
     dev_t dev;
 
     if (mkdir("/dev", 0755) != 0) {
-        uwsgi_error("mkdir(/dev)");
-        exit(1);
+        uwsgi_fatal_error("mkdir(/dev)");
     }
 
     dev = makedev(1, 3);
@@ -107,31 +100,25 @@ static void create_dev () {
     mknod("/dev/urandom", 0666 & S_IFCHR, dev);
 
     if (symlink("/proc/self/fd", "/dev/fd") != 0) {
-        uwsgi_error("symlink(/proc/self/fd)");
-        exit(1);
+        uwsgi_fatal_error("symlink(/proc/self/fd)");
     }
     if (symlink("/proc/self/fd/0", "/dev/stdin") != 0) {
-        uwsgi_error("symlink(/proc/self/fd/0)");
-        exit(1);
+        uwsgi_fatal_error("symlink(/proc/self/fd/0)");
     }
     if (symlink("/proc/self/fd/1", "/dev/stdout") != 0) {
-        uwsgi_error("symlink(/proc/self/fd/1)");
-        exit(1);
+        uwsgi_fatal_error("symlink(/proc/self/fd/1)");
     }
     if (symlink("/proc/self/fd/2", "/dev/stderr") != 0) {
-        uwsgi_error("symlink(/proc/self/fd/2)");
-        exit(1);
+        uwsgi_fatal_error("symlink(/proc/self/fd/2)");
     }
 }
 
 static void mount_proc() {
     if (mkdir("/proc", 0555) != 0) {
-        uwsgi_error("mkdir(/proc)");
-        exit(1);
+        uwsgi_fatal_error("mkdir(/proc)");
     }
     if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
-        uwsgi_error("mount(/proc)");
-        exit(1);
+        uwsgi_fatal_error("mount(/proc)");
     }
 }
 
@@ -142,14 +129,12 @@ static void map_id(const char *file, uint32_t from, uint32_t to) {
 
     fd = open(file, O_WRONLY);
     if (fd < 0) {
-        uwsgi_error_open(file);
-        exit(1);
+        uwsgi_fatal_error_open(file);
     }
 
     sprintf(buf, "%u %u 1", from, to);
     if (write(fd, buf, strlen(buf))) {
         uwsgi_log("write to %s failed: %s [%s line %d]\n", file, strerror(errno), __FILE__, __LINE__);
-        exit(1);
     }
     close(fd);
 }
