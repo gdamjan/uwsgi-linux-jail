@@ -85,19 +85,29 @@ static void create_dev () {
     }
 
     dev = makedev(1, 3);
-    mknod("/dev/null", 0666 & S_IFCHR, dev);
+    if (mknod("/dev/null", 0666 & S_IFCHR, dev) != 0) {
+        uwsgi_fatal_error("mknod(/dev/null)");
+    }
 
     dev = makedev(1, 5);
-    mknod("/dev/zero", 0666 & S_IFCHR, dev);
+    if (mknod("/dev/zero", 0666 & S_IFCHR, dev) != 0) {
+        uwsgi_fatal_error("mknod(/dev/zero)");
+    }
 
     dev = makedev(1, 7);
-    mknod("/dev/full", 0666 & S_IFCHR, dev);
+    if (mknod("/dev/full", 0666 & S_IFCHR, dev) != 0) {
+        uwsgi_fatal_error("mknod(/dev/full)");
+    }
 
     dev = makedev(1, 8);
-    mknod("/dev/random", 0666 & S_IFCHR, dev);
+    if (mknod("/dev/random", 0666 & S_IFCHR, dev) != 0) {
+        uwsgi_fatal_error("mknod(/dev/random)");
+    }
 
     dev = makedev(1, 9);
-    mknod("/dev/urandom", 0666 & S_IFCHR, dev);
+    if (mknod("/dev/urandom", 0666 & S_IFCHR, dev) !=0) {
+        uwsgi_fatal_error("mknod(/dev/urandom)");
+    }
 
     if (symlink("/proc/self/fd", "/dev/fd") != 0) {
         uwsgi_fatal_error("symlink(/proc/self/fd)");
