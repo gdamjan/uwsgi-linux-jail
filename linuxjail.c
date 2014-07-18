@@ -1,19 +1,8 @@
+#define _GNU_SOURCE
 #include <uwsgi.h>
 extern struct uwsgi_server uwsgi;
 
-#define _GNU_SOURCE
-#include <sys/capability.h>
-#include <sched.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/wait.h>
-#include <sys/mount.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <signal.h>
-#include <stdio.h>
-
+// forward declarations
 static void mount_proc();
 static void create_dev ();
 static void create_private_fs ();
@@ -24,11 +13,26 @@ static void jail() {
     uid_t real_euid = geteuid();
     gid_t real_egid = getegid();
 
-    int unshare_flags;
-    unshare_flags = CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWUSER;
+    //int unshare_flags;
+    //unshare_flags = CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWUSER;
 
-    if (-1 == unshare(unshare_flags)) {
-        uwsgi_error("unshare failed");
+    if (-1 == unshare(CLONE_NEWUSER)) {
+        uwsgi_error("unshare(CLONE_NEWUSER) failed");
+        exit(1);
+    }
+
+    if (-1 == unshare(CLONE_NEWIPC)) {
+        uwsgi_error("unshare(CLONE_NEWIPC) failed");
+        exit(1);
+    }
+
+    if (-1 == unshare(CLONE_NEWUTS)) {
+        uwsgi_error("unshare(CLONE_NEWUTS) failed");
+        exit(1);
+    }
+
+    if (-1 == unshare(CLONE_NEWNS)) {
+        uwsgi_error("unshare(CLONE_NEWNS) failed");
         exit(1);
     }
 
@@ -39,8 +43,11 @@ static void jail() {
 }
 
 static void create_private_fs () {
-    char *newroot = "/tmp/nsrootXXXXXX";
-    mkdtemp(newroot);
+    char newroot[] = "/tmp/nsroot-XXXXXX";
+    if (NULL == mkdtemp(newroot)) {
+       uwsgi_error("mkdtemp");
+       exit(1);
+    };
 
     mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
     mount(NULL, newroot, "tmpfs", 0, NULL);
@@ -124,7 +131,7 @@ static void map_id(const char *file, uint32_t from, uint32_t to) {
     close(fd);
 }
 
-static struct uwsgi_option uwsgi_linuxjail_options[] = {}
+// static struct uwsgi_option uwsgi_linuxjail_options[] = {}
 
 struct uwsgi_plugin linuxjail_plugin = {
     .jail = jail,
