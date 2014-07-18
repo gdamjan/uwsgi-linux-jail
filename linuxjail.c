@@ -19,17 +19,14 @@ static void jail() {
     if (-1 == unshare(CLONE_NEWUSER)) {
         uwsgi_fatal_error("unshare(CLONE_NEWUSER) failed");
     }
-
+    if (-1 == unshare(CLONE_NEWNS)) {
+        uwsgi_fatal_error("unshare(CLONE_NEWNS) failed");
+    }
     if (-1 == unshare(CLONE_NEWIPC)) {
         uwsgi_fatal_error("unshare(CLONE_NEWIPC) failed");
     }
-
     if (-1 == unshare(CLONE_NEWUTS)) {
         uwsgi_fatal_error("unshare(CLONE_NEWUTS) failed");
-    }
-
-    if (-1 == unshare(CLONE_NEWNS)) {
-        uwsgi_fatal_error("unshare(CLONE_NEWNS) failed");
     }
 
     create_private_fs();
@@ -48,8 +45,12 @@ static void create_private_fs () {
     mount(NULL, newroot, "tmpfs", 0, NULL);
 
     char *orig_root = uwsgi_concat2(newroot, "/.orig_root");
-    mkdir(orig_root, 0755);
-    pivot_root(newroot, orig_root);
+    if (mkdir(orig_root, 0755) != 0) {
+        uwsgi_fatal_error("mkdir(orig_root)");
+    }
+    if (pivot_root(newroot, orig_root) != 0) {
+        uwsgi_fatal_error("pivot_root");
+    }
 
     if (chdir("/") != 0) {
         uwsgi_fatal_error("chdir(/)");
@@ -58,9 +59,15 @@ static void create_private_fs () {
     create_dev();
     mount_proc();
 
-    mkdir("/usr", 0755);
-    mount("/.orig_root/usr", "/usr", "none", MS_BIND | MS_RDONLY, NULL);
-    // mount(NULL, "/usr", NULL, MS_RDONLY | MS_REMOUNT, NULL);
+    if (mkdir("/usr", 0755) != 0) {
+        uwsgi_fatal_error("mkdir(/usr)");
+    };
+    if (mount("/.orig_root/usr", "/usr", "none", MS_BIND, NULL) != 0) {
+        uwsgi_fatal_error("mount(/usr)");
+    }
+    if (mount(NULL, "/usr", NULL, MS_RDONLY | MS_REMOUNT, NULL) != 0) {
+        uwsgi_fatal_error("remount(/usr)");
+    }
 
     char *orig_newroot = uwsgi_concat2("/.orig_root", newroot);
     rmdir(orig_newroot);
