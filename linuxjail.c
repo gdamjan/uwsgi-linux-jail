@@ -80,6 +80,9 @@ static void do_the_jail() {
     if (umount2(ORIG_ROOT, MNT_DETACH) != 0) {
         uwsgi_fatal_error("unmount all in old root");
     }
+    if (rmdir(ORIG_ROOT) != 0) {
+        uwsgi_error("rmdir " ORIG_ROOT);
+    }
 
     // Debug only, to find out why the above mount /proc is not working
     printf("eUID = %ld;  eGID = %ld;  ",
