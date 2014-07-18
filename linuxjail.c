@@ -72,6 +72,26 @@ static void do_the_jail() {
         mount(NULL, "/usr", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
             uwsgi_fatal_error("Read-only bind mount /usr");
     }
+    if (mkdir("/bin", 0755) != 0 ||
+        mount(ORIG_ROOT "/bin", "/bin", "none", MS_BIND, NULL) != 0 ||
+        mount(NULL, "/bin", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
+            uwsgi_fatal_error("Read-only bind mount /bin");
+    }
+    if (mkdir("/sbin", 0755) != 0 ||
+        mount(ORIG_ROOT "/sbin", "/sbin", "none", MS_BIND, NULL) != 0 ||
+        mount(NULL, "/sbin", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
+            uwsgi_fatal_error("Read-only bind mount /sbin");
+    }
+    if (mkdir("/lib", 0755) != 0 ||
+        mount(ORIG_ROOT "/lib", "/lib", "none", MS_BIND, NULL) != 0 ||
+        mount(NULL, "/lib", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
+            uwsgi_fatal_error("Read-only bind mount /lib");
+    }
+    if (mkdir("/lib64", 0755) != 0 ||
+        mount(ORIG_ROOT "/lib64", "/lib64", "none", MS_BIND, NULL) != 0 ||
+        mount(NULL, "/lib64", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
+            uwsgi_fatal_error("Read-only bind mount /lib64");
+    }
 
     if (umount2(ORIG_ROOT, MNT_DETACH) != 0) {
         uwsgi_fatal_error("unmount all in old root");
@@ -86,7 +106,9 @@ static void do_the_jail() {
 
     cap_t caps = cap_get_proc();
     printf("capabilities: %s\n", cap_to_text(caps, NULL));
-    sleep(60);
+    if (system("/bin/bash") != 0) {
+        uwsgi_fatal_error("system");
+    }
 
 
     if (mkdir("/proc", 0555) != 0) {
