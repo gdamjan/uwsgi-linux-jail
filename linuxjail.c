@@ -2,9 +2,11 @@
 #include <uwsgi.h>
 extern struct uwsgi_server uwsgi;
 
+#define ORIG_ROOT  "/.orig_root"
+#define TEMP_ROOT  "/tmp/nsroot-XXXXXX"
+
 // forward declarations
 static void create_dev ();
-static void unmount_recursive(char *dir);
 static void map_id(const char *, uint32_t, uint32_t);
 
 static void do_the_jail() {
@@ -30,7 +32,7 @@ static void do_the_jail() {
     map_id("/proc/self/uid_map", 0, real_euid);
     map_id("/proc/self/gid_map", 0, real_egid);
 
-    char newroot[] = "/tmp/nsroot-XXXXXX";
+    char newroot[] = TEMP_ROOT;
     if (NULL == mkdtemp(newroot)) {
        uwsgi_fatal_error("mkdtemp");
     };
@@ -38,7 +40,7 @@ static void do_the_jail() {
     mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
     mount(NULL, newroot, "tmpfs", 0, NULL);
 
-    char *orig_root = uwsgi_concat2(newroot, "/.orig_root");
+    char *orig_root = uwsgi_concat2(newroot, ORIG_ROOT);
     if (mkdir(orig_root, 0755) != 0) {
         uwsgi_fatal_error("mkdir(orig_root)");
     }
@@ -55,18 +57,18 @@ static void do_the_jail() {
     if (mkdir("/usr", 0755) != 0) {
         uwsgi_fatal_error("mkdir(/usr)");
     };
-    if (mount("/.orig_root/usr", "/usr", "none", MS_BIND, NULL) != 0) {
+    if (mount(ORIG_ROOT "/usr", "/usr", "none", MS_BIND, NULL) != 0) {
         uwsgi_fatal_error("mount(/usr)");
     }
     if (mount(NULL, "/usr", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
         uwsgi_fatal_error("remount(/usr)");
     }
 
-    char *orig_newroot = uwsgi_concat2("/.orig_root", newroot);
+    char *orig_newroot = uwsgi_concat2(ORIG_ROOT, newroot);
     rmdir(orig_newroot);
     free(orig_newroot);
 
-    unmount_recursive("/.orig_root");
+    umount2(ORIG_ROOT, MNT_DETACH);
 
     if (mkdir("/proc", 0555) != 0) {
         uwsgi_fatal_error("mkdir(/proc)");
@@ -76,42 +78,6 @@ static void do_the_jail() {
     }
 
     free(orig_root);
-}
-
-static void unmount_recursive(char *dir) {
-    FILE *procmounts;
-    char line[1024];
-    int unmounted = -1;
-
-    char *self_mounts = uwsgi_concat2(dir, "/proc/self/mounts");
-
-    // try until there's nothing to unmount
-    while (unmounted != 0) {
-        unmounted = 0;
-        procmounts = fopen(self_mounts, "r");
-        if (procmounts == NULL) {
-            uwsgi_fatal_error("fopen(/proc/self/mounts)");
-        }
-
-        char *delim0, *delim1;
-        while (fgets(line, 1024, procmounts) != NULL) {
-            delim0 = strchr(line, ' ');
-            if (delim0 == NULL) continue;
-            delim0++;
-            delim1 = strchr(delim0, ' ');
-            if (delim1 == NULL) continue;
-            *delim1 = 0;
-
-            // unmount just the filesystems under dir
-            if (strstr(delim0, dir) == delim0) {
-                printf("Unmounting %s\n", delim0);
-                umount(delim0);
-                unmounted++;
-            }
-        }
-        fclose(procmounts);
-    }
-    free(self_mounts);
 }
 
 static void create_dev () {
