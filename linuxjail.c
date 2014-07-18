@@ -17,7 +17,7 @@ static void do_the_jail() {
     unshare_flags = CLONE_NEWUSER | CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS | CLONE_NEWIPC;  // CLONE_NEWNET
 
     if (unshare(unshare_flags) != 0) {
-        uwsgi_fatal_error("unshare(CLONE_NEWUSER) failed");
+        uwsgi_fatal_error("unshare failed");
     }
 
     map_id("/proc/self/uid_map", 0, real_euid);
