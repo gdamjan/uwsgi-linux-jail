@@ -52,6 +52,10 @@ static void do_the_jail() {
         uwsgi_fatal_error("chdir(/)");
     }
 
+    char *orig_newroot = uwsgi_concat2(ORIG_ROOT, newroot);
+    rmdir(orig_newroot);
+    free(orig_newroot);
+
     create_dev();
 
     if (mkdir("/usr", 0755) != 0) {
@@ -63,10 +67,6 @@ static void do_the_jail() {
     if (mount(NULL, "/usr", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
         uwsgi_fatal_error("remount(/usr)");
     }
-
-    char *orig_newroot = uwsgi_concat2(ORIG_ROOT, newroot);
-    rmdir(orig_newroot);
-    free(orig_newroot);
 
     umount2(ORIG_ROOT, MNT_DETACH);
 
