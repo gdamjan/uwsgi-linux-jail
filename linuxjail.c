@@ -55,6 +55,7 @@ static void create_private_fs () {
     char *orig_root = uwsgi_concat2(newroot, "/.orig_root");
     mkdir(orig_root, 0755);
     pivot_root(newroot, orig_root);
+
     if (chdir("/") != 0) {
         uwsgi_error("chdir(/)");
         exit(1);
@@ -64,16 +65,14 @@ static void create_private_fs () {
     mount_proc();
 
     mkdir("/usr", 0755);
-    char *orig_usr = uwsgi_concat2(orig_root, "/usr");
-    mount(orig_usr, "/usr", "none", MS_BIND | MS_RDONLY, NULL);
+    mount("/.orig_root/usr", "/usr", "none", MS_BIND | MS_RDONLY, NULL);
     // mount(NULL, "/usr", NULL, MS_RDONLY | MS_REMOUNT, NULL);
-    free(orig_usr);
 
-    char *orig_newroot = uwsgi_concat2(orig_root, newroot);
+    char *orig_newroot = uwsgi_concat2("/.orig_root", newroot);
     rmdir(orig_newroot);
     free(orig_newroot);
 
-    unmount_recursive(orig_root);
+    unmount_recursive("/.orig_root");
 
     free(orig_root);
 }
@@ -126,8 +125,14 @@ static void create_dev () {
 }
 
 static void mount_proc() {
-    mkdir("/proc", 0555);
-    mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL);
+    if (mkdir("/proc", 0555) != 0) {
+        uwsgi_error("mkdir(/proc)");
+        exit(1);
+    }
+    if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
+        uwsgi_error("mount(/proc)");
+        exit(1);
+    }
 }
 
 /* from util-linux unshare.c */
