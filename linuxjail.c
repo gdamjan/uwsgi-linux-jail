@@ -139,7 +139,8 @@ static void map_id(const char *file, uint32_t from, uint32_t to) {
 
     fd = open(file, O_WRONLY);
     if (fd < 0) {
-        uwsgi_fatal_error_open(file);
+        uwsgi_error_open(file);
+        exit(1);
     }
 
     sprintf(buf, "%u %u 1", from, to);
