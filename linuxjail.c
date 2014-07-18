@@ -13,23 +13,11 @@ static void do_the_jail() {
     uid_t real_euid = geteuid();
     gid_t real_egid = getegid();
 
-    //int unshare_flags;
-    //unshare_flags = CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWUSER;
+    int unshare_flags;
+    unshare_flags = CLONE_NEWUSER | CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS | CLONE_NEWIPC;  // CLONE_NEWNET
 
-    if (unshare(CLONE_NEWUSER) != 0) {
+    if (unshare(unshare_flags) != 0) {
         uwsgi_fatal_error("unshare(CLONE_NEWUSER) failed");
-    }
-    if (unshare(CLONE_NEWNS) != 0) {
-        uwsgi_fatal_error("unshare(CLONE_NEWNS) failed");
-    }
-    if (unshare(CLONE_NEWIPC) != 0) {
-        uwsgi_fatal_error("unshare(CLONE_NEWIPC) failed");
-    }
-    if (unshare(CLONE_NEWUTS) != 0) {
-        uwsgi_fatal_error("unshare(CLONE_NEWUTS) failed");
-    }
-    if (unshare(CLONE_NEWPID) != 0) {
-        uwsgi_fatal_error("unshare(CLONE_NEWPID) failed");
     }
 
     map_id("/proc/self/uid_map", 0, real_euid);
