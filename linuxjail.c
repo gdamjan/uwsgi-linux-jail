@@ -3,13 +3,11 @@
 extern struct uwsgi_server uwsgi;
 
 // forward declarations
-static void mount_proc();
 static void create_dev ();
-static void create_private_fs ();
-static void unmount_recursive(const char *dir);
+static void unmount_recursive(char *dir);
 static void map_id(const char *, uint32_t, uint32_t);
 
-static void jail() {
+static void do_the_jail() {
     uid_t real_euid = geteuid();
     gid_t real_egid = getegid();
 
@@ -29,13 +27,9 @@ static void jail() {
         uwsgi_fatal_error("unshare(CLONE_NEWUTS) failed");
     }
 
-    create_private_fs();
-
     map_id("/proc/self/uid_map", 0, real_euid);
     map_id("/proc/self/gid_map", 0, real_egid);
-}
 
-static void create_private_fs () {
     char newroot[] = "/tmp/nsroot-XXXXXX";
     if (NULL == mkdtemp(newroot)) {
        uwsgi_fatal_error("mkdtemp");
@@ -57,7 +51,6 @@ static void create_private_fs () {
     }
 
     create_dev();
-    mount_proc();
 
     if (mkdir("/usr", 0755) != 0) {
         uwsgi_fatal_error("mkdir(/usr)");
@@ -75,12 +68,50 @@ static void create_private_fs () {
 
     unmount_recursive("/.orig_root");
 
+    if (mkdir("/proc", 0555) != 0) {
+        uwsgi_fatal_error("mkdir(/proc)");
+    }
+    if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
+        uwsgi_fatal_error("mount(/proc)");
+    }
+
     free(orig_root);
 }
 
-static void unmount_recursive(const char *dir) {
-    // TODO: uwsgi or util-linux solution?
-    umount(dir);
+static void unmount_recursive(char *dir) {
+    FILE *procmounts;
+    char line[1024];
+    int unmounted = -1;
+
+    char *self_mounts = uwsgi_concat2(dir, "/proc/self/mounts");
+
+    // try until there's nothing to unmount
+    while (unmounted != 0) {
+        unmounted = 0;
+        procmounts = fopen(self_mounts, "r");
+        if (procmounts == NULL) {
+            uwsgi_fatal_error("fopen(/proc/self/mounts)");
+        }
+
+        char *delim0, *delim1;
+        while (fgets(line, 1024, procmounts) != NULL) {
+            delim0 = strchr(line, ' ');
+            if (delim0 == NULL) continue;
+            delim0++;
+            delim1 = strchr(delim0, ' ');
+            if (delim1 == NULL) continue;
+            *delim1 = 0;
+
+            // unmount just the filesystems under dir
+            if (strstr(delim0, dir) == delim0) {
+                printf("Unmounting %s\n", delim0);
+                umount(delim0);
+                unmounted++;
+            }
+        }
+        fclose(procmounts);
+    }
+    free(self_mounts);
 }
 
 static void create_dev () {
@@ -130,14 +161,6 @@ static void create_dev () {
     }
 }
 
-static void mount_proc() {
-    if (mkdir("/proc", 0555) != 0) {
-        uwsgi_fatal_error("mkdir(/proc)");
-    }
-    if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
-        uwsgi_fatal_error("mount(/proc)");
-    }
-}
 
 /* from util-linux unshare.c */
 static void map_id(const char *file, uint32_t from, uint32_t to) {
@@ -151,8 +174,9 @@ static void map_id(const char *file, uint32_t from, uint32_t to) {
     }
 
     sprintf(buf, "%u %u 1", from, to);
-    if (write(fd, buf, strlen(buf))) {
+    if (write(fd, buf, strlen(buf)) < 0) {
         uwsgi_log("write to %s failed: %s [%s line %d]\n", file, strerror(errno), __FILE__, __LINE__);
+        exit(1);
     }
     close(fd);
 }
@@ -160,6 +184,6 @@ static void map_id(const char *file, uint32_t from, uint32_t to) {
 // static struct uwsgi_option uwsgi_linuxjail_options[] = {}
 
 struct uwsgi_plugin linuxjail_plugin = {
-    .jail = jail,
+    .jail = do_the_jail,
     .name = "linuxjail"
 };
