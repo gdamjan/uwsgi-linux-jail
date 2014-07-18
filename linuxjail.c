@@ -40,8 +40,12 @@ static void do_the_jail() {
        uwsgi_fatal_error("mkdtemp");
     };
 
-    mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL);
-    mount(NULL, newroot, "tmpfs", 0, NULL);
+    if(mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0) {
+        uwsgi_fatal_error("remount / as private");
+    }
+    if (mount(NULL, newroot, "tmpfs", 0, NULL) != 0) {
+        uwsgi_fatal_error("mount(/, tmpfs)");
+    }
 
     char *orig_root = uwsgi_concat2(newroot, ORIG_ROOT);
     if (mkdir(orig_root, 0755) != 0) {
@@ -56,7 +60,9 @@ static void do_the_jail() {
     }
 
     char *orig_newroot = uwsgi_concat2(ORIG_ROOT, newroot);
-    rmdir(orig_newroot);
+    if (rmdir(orig_newroot) != 0) {
+        uwsgi_error("rmdir temp root dir");
+    }
     free(orig_newroot);
 
     create_dev();
@@ -71,7 +77,9 @@ static void do_the_jail() {
         uwsgi_fatal_error("remount(/usr)");
     }
 
-    umount2(ORIG_ROOT, MNT_DETACH);
+    if (umount2(ORIG_ROOT, MNT_DETACH) != 0) {
+        uwsgi_fatal_error("unmount all in old root");
+    }
 
     // Debug only, to find out why the above mount /proc is not working
     printf("eUID = %ld;  eGID = %ld;  ",
