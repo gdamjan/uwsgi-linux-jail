@@ -108,27 +108,27 @@ static void create_dev () {
     }
 
     dev = makedev(1, 3);
-    if (mknod("/dev/null", 0666 & S_IFCHR, dev) != 0) {
+    if (mknod("/dev/null", 0666 | S_IFCHR, dev) != 0) {
         uwsgi_fatal_error("mknod(/dev/null)");
     }
 
     dev = makedev(1, 5);
-    if (mknod("/dev/zero", 0666 & S_IFCHR, dev) != 0) {
+    if (mknod("/dev/zero", 0666 | S_IFCHR, dev) != 0) {
         uwsgi_fatal_error("mknod(/dev/zero)");
     }
 
     dev = makedev(1, 7);
-    if (mknod("/dev/full", 0666 & S_IFCHR, dev) != 0) {
+    if (mknod("/dev/full", 0666 | S_IFCHR, dev) != 0) {
         uwsgi_fatal_error("mknod(/dev/full)");
     }
 
     dev = makedev(1, 8);
-    if (mknod("/dev/random", 0666 & S_IFCHR, dev) != 0) {
+    if (mknod("/dev/random", 0666 | S_IFCHR, dev) != 0) {
         uwsgi_fatal_error("mknod(/dev/random)");
     }
 
     dev = makedev(1, 9);
-    if (mknod("/dev/urandom", 0666 & S_IFCHR, dev) !=0) {
+    if (mknod("/dev/urandom", 0666 | S_IFCHR, dev) !=0) {
         uwsgi_fatal_error("mknod(/dev/urandom)");
     }
 
