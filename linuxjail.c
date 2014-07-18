@@ -67,14 +67,10 @@ static void do_the_jail() {
 
     create_dev();
 
-    if (mkdir("/usr", 0755) != 0) {
-        uwsgi_fatal_error("mkdir(/usr)");
-    };
-    if (mount(ORIG_ROOT "/usr", "/usr", "none", MS_BIND, NULL) != 0) {
-        uwsgi_fatal_error("mount(/usr)");
-    }
-    if (mount(NULL, "/usr", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
-        uwsgi_fatal_error("remount(/usr)");
+    if (mkdir("/usr", 0755) != 0 ||
+        mount(ORIG_ROOT "/usr", "/usr", "none", MS_BIND, NULL) != 0 ||
+        mount(NULL, "/usr", NULL, MS_BIND | MS_RDONLY | MS_REMOUNT, NULL) != 0) {
+            uwsgi_fatal_error("Read-only bind mount /usr");
     }
 
     if (umount2(ORIG_ROOT, MNT_DETACH) != 0) {
