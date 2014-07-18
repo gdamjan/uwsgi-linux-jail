@@ -55,7 +55,10 @@ static void create_private_fs () {
     char *orig_root = uwsgi_concat2(newroot, "/.orig_root");
     mkdir(orig_root, 0755);
     pivot_root(newroot, orig_root);
-    chdir("/");
+    if (chdir("/") != 0) {
+        uwsgi_error("chdir(/)");
+        exit(1);
+    }
 
     create_dev();
     mount_proc();
