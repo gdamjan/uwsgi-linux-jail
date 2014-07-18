@@ -70,6 +70,15 @@ static void do_the_jail() {
 
     umount2(ORIG_ROOT, MNT_DETACH);
 
+    // Debug only, to find out why the above mount /proc is not working
+    printf("eUID = %ld;  eGID = %ld;  ",
+          (long) geteuid(), (long) getegid());
+
+    cap_t caps = cap_get_proc();
+    printf("capabilities: %s\n", cap_to_text(caps, NULL));
+    sleep(300);
+
+
     if (mkdir("/proc", 0555) != 0) {
         uwsgi_fatal_error("mkdir(/proc)");
     }
