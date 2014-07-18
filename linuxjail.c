@@ -16,19 +16,19 @@ static void do_the_jail() {
     //int unshare_flags;
     //unshare_flags = CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWUSER;
 
-    if (-1 == unshare(CLONE_NEWUSER)) {
+    if (unshare(CLONE_NEWUSER) != 0) {
         uwsgi_fatal_error("unshare(CLONE_NEWUSER) failed");
     }
-    if (-1 == unshare(CLONE_NEWNS)) {
+    if (unshare(CLONE_NEWNS) != 0) {
         uwsgi_fatal_error("unshare(CLONE_NEWNS) failed");
     }
-    if (-1 == unshare(CLONE_NEWIPC)) {
+    if (unshare(CLONE_NEWIPC) != 0) {
         uwsgi_fatal_error("unshare(CLONE_NEWIPC) failed");
     }
-    if (-1 == unshare(CLONE_NEWUTS)) {
+    if (unshare(CLONE_NEWUTS) != 0) {
         uwsgi_fatal_error("unshare(CLONE_NEWUTS) failed");
     }
-    if (-1 == unshare(CLONE_NEWPID)) {
+    if (unshare(CLONE_NEWPID) != 0) {
         uwsgi_fatal_error("unshare(CLONE_NEWPID) failed");
     }
 
@@ -36,11 +36,11 @@ static void do_the_jail() {
     map_id("/proc/self/gid_map", 0, real_egid);
 
     char newroot[] = TEMP_ROOT;
-    if (NULL == mkdtemp(newroot)) {
+    if (mkdtemp(newroot) == NULL) {
        uwsgi_fatal_error("mkdtemp");
     };
 
-    if(mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0) {
+    if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0) {
         uwsgi_fatal_error("remount / as private");
     }
     if (mount(NULL, newroot, "tmpfs", 0, NULL) != 0) {
@@ -87,7 +87,7 @@ static void do_the_jail() {
 
     cap_t caps = cap_get_proc();
     printf("capabilities: %s\n", cap_to_text(caps, NULL));
-    sleep(300);
+    sleep(60);
 
 
     if (mkdir("/proc", 0555) != 0) {
