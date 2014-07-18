@@ -84,7 +84,10 @@ static void create_dev () {
     /* create a minimal /dev structure */
     dev_t dev;
 
-    mkdir("/dev", 0755);
+    if (mkdir("/dev", 0755) != 0) {
+        uwsgi_error("mkdir(/dev)");
+        exit(1);
+    }
 
     dev = makedev(1, 3);
     mknod("/dev/null", 0666 & S_IFCHR, dev);
@@ -101,10 +104,22 @@ static void create_dev () {
     dev = makedev(1, 9);
     mknod("/dev/urandom", 0666 & S_IFCHR, dev);
 
-    symlink("/proc/self/fd", "/dev/fd");
-    symlink("/proc/self/fd/0", "/dev/stdin");
-    symlink("/proc/self/fd/1", "/dev/stdout");
-    symlink("/proc/self/fd/2", "/dev/stderr");
+    if (symlink("/proc/self/fd", "/dev/fd") != 0) {
+        uwsgi_error("symlink(/proc/self/fd)");
+        exit(1);
+    }
+    if (symlink("/proc/self/fd/0", "/dev/stdin") != 0) {
+        uwsgi_error("symlink(/proc/self/fd/0)");
+        exit(1);
+    }
+    if (symlink("/proc/self/fd/1", "/dev/stdout") != 0) {
+        uwsgi_error("symlink(/proc/self/fd/1)");
+        exit(1);
+    }
+    if (symlink("/proc/self/fd/2", "/dev/stderr") != 0) {
+        uwsgi_error("symlink(/proc/self/fd/2)");
+        exit(1);
+    }
 }
 
 static void mount_proc() {
