@@ -22,10 +22,20 @@ Features
  - chdir /
 
 
+Issues
+======
+ - mount /proc
+ - How to have /dev in a user namespace
+
+
 Build
 =====
 
     uwsgi --build-plugin https://github.com/gdamjan/uwsgi-linux-jail
+
+or if you're in the source dir:
+
+    uwsgi --build-plugin .
 
 
 References
