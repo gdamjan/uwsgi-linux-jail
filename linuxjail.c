@@ -88,6 +88,10 @@ static void do_the_jail() {
         uwsgi_error("rmdir " ORIG_ROOT);
     }
 
+    if (mount_proc() != 0) {
+        exit(EXIT_FAILURE);
+    }
+
     // Debug only, to find out why the above mount /proc is not working
     printf("eUID = %ld;  eGID = %ld;  ",
           (long) geteuid(), (long) getegid());
@@ -99,14 +103,24 @@ static void do_the_jail() {
     }
 
 
-    if (mkdir("/proc", 0555) != 0) {
-        uwsgi_fatal_error("mkdir(/proc)");
-    }
-    if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
-        uwsgi_fatal_error("mount(/proc)");
-    }
-
     free(orig_root);
+}
+
+static int mount_proc () {
+    int pid, staus;
+
+    pid = fork();
+    if (pid == 0) {
+        if (mkdir("/proc", 0555) != 0) {
+            uwsgi_fatal_error("mkdir(/proc)");
+        }
+        if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
+            uwsgi_fatal_error("mount(/proc)");
+        }
+        exit(0);
+    }
+    waitpid(pid, &status, 0);
+    return WEXITSTATUS(status);
 }
 
 static void create_dev () {
@@ -165,13 +179,13 @@ static void map_id(const char *file, uint32_t from, uint32_t to) {
     fd = open(file, O_WRONLY);
     if (fd < 0) {
         uwsgi_error_open(file);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     sprintf(buf, "%u %u 1", from, to);
     if (write(fd, buf, strlen(buf)) < 0) {
         uwsgi_log("write to %s failed: %s [%s line %d]\n", file, strerror(errno), __FILE__, __LINE__);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     close(fd);
 }
