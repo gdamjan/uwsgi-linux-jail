@@ -7,7 +7,6 @@ extern struct uwsgi_server uwsgi;
 
 // forward declarations
 static void create_dev ();
-static int mount_proc ();
 static void map_id(const char *, uint32_t, uint32_t);
 
 static void do_the_jail() {
@@ -23,6 +22,25 @@ static void do_the_jail() {
 
     map_id("/proc/self/uid_map", 0, real_euid);
     map_id("/proc/self/gid_map", 0, real_egid);
+
+    int status;
+    pid_t pid = fork();
+
+    switch(pid) {
+    case -1:
+        uwsgi_fatal_error("fork failed");
+    case 0: /* child */
+        break;
+    default: /* parent */
+        if (waitpid(pid, &status, 0) == -1) {
+            uwsgi_fatal_error("waitpid failed");
+        }
+        if (WIFEXITED(status))
+            exit(WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            kill(getpid(), WTERMSIG(status));
+        uwsgi_fatal_error("child exit failed");
+    }
 
     char newroot[] = TEMP_ROOT;
     if (mkdtemp(newroot) == NULL) {
@@ -89,8 +107,11 @@ static void do_the_jail() {
         uwsgi_error("rmdir " ORIG_ROOT);
     }
 
-    if (mount_proc() != 0) {
-        exit(EXIT_FAILURE);
+    if (mkdir("/proc", 0555) != 0) {
+        uwsgi_fatal_error("mkdir(/proc)");
+    }
+    if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
+        uwsgi_fatal_error("mount(/proc)");
     }
 
     // Debug only, to find out why the above mount /proc is not working
@@ -103,26 +124,9 @@ static void do_the_jail() {
         uwsgi_fatal_error("system");
     }
 
-
     free(orig_root);
 }
 
-static int mount_proc () {
-    int pid, status;
-
-    pid = fork();
-    if (pid == 0) {
-        if (mkdir("/proc", 0555) != 0) {
-            uwsgi_fatal_error("mkdir(/proc)");
-        }
-        if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
-            uwsgi_fatal_error("mount(/proc)");
-        }
-        exit(0);
-    }
-    waitpid(pid, &status, 0);
-    return WEXITSTATUS(status);
-}
 
 static void create_dev () {
     /* create a minimal /dev structure */
