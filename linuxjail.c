@@ -108,7 +108,7 @@ static void do_the_jail() {
 }
 
 static int mount_proc () {
-    int pid, staus;
+    int pid, status;
 
     pid = fork();
     if (pid == 0) {
