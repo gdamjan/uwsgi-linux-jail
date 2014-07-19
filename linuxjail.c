@@ -7,6 +7,7 @@ extern struct uwsgi_server uwsgi;
 
 // forward declarations
 static void create_dev ();
+static int mount_proc ();
 static void map_id(const char *, uint32_t, uint32_t);
 
 static void do_the_jail() {
