@@ -72,7 +72,6 @@ static void do_the_jail() {
     }
     free(orig_newroot);
 
-    create_dev();
 
     if (mkdir("/usr", 0755) != 0 ||
         mount(ORIG_ROOT "/usr", "/usr", "none", MS_BIND, NULL) != 0 ||
@@ -115,6 +114,8 @@ static void do_the_jail() {
     }
 
     // Debug only, to find out why the above mount /proc is not working
+    printf("PID = %ld; PPID = %ld; ",
+          (long) getpid(), (long) getppid());
     printf("eUID = %ld;  eGID = %ld;  ",
           (long) geteuid(), (long) getegid());
 
@@ -123,6 +124,8 @@ static void do_the_jail() {
     if (system("/bin/bash") != 0) {
         uwsgi_fatal_error("system");
     }
+
+    create_dev();
 
     free(orig_root);
 }
