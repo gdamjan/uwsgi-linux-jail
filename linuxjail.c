@@ -7,6 +7,8 @@ extern struct uwsgi_server uwsgi;
 
 // forward declarations
 static void create_dev ();
+static void fork_fake_init();
+static void shell_debug();
 static void map_id(const char *, uint32_t, uint32_t);
 
 static void do_the_jail() {
@@ -19,37 +21,18 @@ static void do_the_jail() {
     if (unshare(unshare_flags) != 0) {
         uwsgi_fatal_error("unshare failed");
     }
+    if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0) {
+        uwsgi_fatal_error("remount / as private");
+    }
 
     map_id("/proc/self/uid_map", 0, real_euid);
     map_id("/proc/self/gid_map", 0, real_egid);
-
-    int status;
-    pid_t pid = fork();
-
-    switch(pid) {
-    case -1:
-        uwsgi_fatal_error("fork failed");
-    case 0: /* child */
-        break;
-    default: /* parent */
-        if (waitpid(pid, &status, 0) == -1) {
-            uwsgi_fatal_error("waitpid failed");
-        }
-        if (WIFEXITED(status))
-            exit(WEXITSTATUS(status));
-        else if (WIFSIGNALED(status))
-            kill(getpid(), WTERMSIG(status));
-        uwsgi_fatal_error("child exit failed");
-    }
 
     char newroot[] = TEMP_ROOT;
     if (mkdtemp(newroot) == NULL) {
        uwsgi_fatal_error("mkdtemp");
     };
 
-    if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0) {
-        uwsgi_fatal_error("remount / as private");
-    }
     if (mount(NULL, newroot, "tmpfs", 0, NULL) != 0) {
         uwsgi_fatal_error("mount(/, tmpfs)");
     }
@@ -196,6 +179,42 @@ static void map_id(const char *file, uint32_t from, uint32_t to) {
         exit(EXIT_FAILURE);
     }
     close(fd);
+}
+
+static void fork_fake_init() {
+    int status;
+    pid_t pid = fork();
+
+    // fork to become pid 1 (the child), the parent just waits
+    switch(pid) {
+    case -1:
+        uwsgi_fatal_error("fork failed");
+    case 0: /* child */
+        break;
+    default: /* parent */
+        if (waitpid(pid, &status, 0) == -1) {
+            uwsgi_fatal_error("waitpid failed");
+        }
+        if (WIFEXITED(status))
+            exit(WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            kill(getpid(), WTERMSIG(status));
+        uwsgi_fatal_error("child exit failed");
+    }
+}
+
+static void shell_debug() {
+    // Debug only, to find out why the above mount /proc is not working
+    printf("PID = %ld; PPID = %ld; ",
+          (long) getpid(), (long) getppid());
+    printf("eUID = %ld;  eGID = %ld;  ",
+          (long) geteuid(), (long) getegid());
+
+    cap_t caps = cap_get_proc();
+    printf("capabilities: %s\n", cap_to_text(caps, NULL));
+    if (system("/bin/bash") != 0) {
+        uwsgi_fatal_error("system");
+    }
 }
 
 // static struct uwsgi_option uwsgi_linuxjail_options[] = {}
