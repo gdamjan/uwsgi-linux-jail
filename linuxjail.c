@@ -89,6 +89,8 @@ static void do_the_jail() {
         uwsgi_error("rmdir " ORIG_ROOT);
     }
 
+    fork_fake_init();
+
     if (mkdir("/proc", 0555) != 0) {
         uwsgi_fatal_error("mkdir(/proc)");
     }
@@ -96,17 +98,7 @@ static void do_the_jail() {
         uwsgi_fatal_error("mount(/proc)");
     }
 
-    // Debug only, to find out why the above mount /proc is not working
-    printf("PID = %ld; PPID = %ld; ",
-          (long) getpid(), (long) getppid());
-    printf("eUID = %ld;  eGID = %ld;  ",
-          (long) geteuid(), (long) getegid());
-
-    cap_t caps = cap_get_proc();
-    printf("capabilities: %s\n", cap_to_text(caps, NULL));
-    if (system("/bin/bash") != 0) {
-        uwsgi_fatal_error("system");
-    }
+    shell_debug();
 
     create_dev();
 
