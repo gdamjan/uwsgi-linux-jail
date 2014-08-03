@@ -28,6 +28,8 @@ static void do_the_jail() {
     map_id("/proc/self/uid_map", 0, real_euid);
     map_id("/proc/self/gid_map", 0, real_egid);
 
+    fork_fake_init();
+
     char newroot[] = TEMP_ROOT;
     if (mkdtemp(newroot) == NULL) {
        uwsgi_fatal_error("mkdtemp");
@@ -82,20 +84,18 @@ static void do_the_jail() {
             uwsgi_fatal_error("Read-only bind mount /lib64");
     }
 
-    if (umount2(ORIG_ROOT, MNT_DETACH) != 0) {
-        uwsgi_fatal_error("unmount all in old root");
-    }
-    if (rmdir(ORIG_ROOT) != 0) {
-        uwsgi_error("rmdir " ORIG_ROOT);
-    }
-
-    fork_fake_init();
-
     if (mkdir("/proc", 0555) != 0) {
         uwsgi_fatal_error("mkdir(/proc)");
     }
     if (mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
         uwsgi_fatal_error("mount(/proc)");
+    }
+
+    if (umount2(ORIG_ROOT, MNT_DETACH) != 0) {
+        uwsgi_fatal_error("unmount all in old root");
+    }
+    if (rmdir(ORIG_ROOT) != 0) {
+        uwsgi_error("rmdir " ORIG_ROOT);
     }
 
     shell_debug();
