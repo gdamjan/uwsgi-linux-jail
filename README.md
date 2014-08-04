@@ -24,8 +24,7 @@ Features
 
 Issues
 ======
- - mount /proc
- - How to have /dev in a user namespace
+ - How to have /dev in a user namespace (not possible on tmpfs?)
 
 
 Build
