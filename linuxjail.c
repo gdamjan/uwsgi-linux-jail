@@ -28,6 +28,9 @@ static void do_the_jail() {
     map_id("/proc/self/uid_map", 0, real_euid);
     map_id("/proc/self/gid_map", 0, real_egid);
 
+    // this must be done before trying to mount /proc
+    // otherwise I got "Operation not permitted" at least on kernels up to 3.15
+    // probably there's a requirement to become PID 1 first
     fork_fake_init();
 
     char newroot[] = TEMP_ROOT;

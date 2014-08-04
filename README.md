@@ -3,7 +3,7 @@ A custom Linux jail for uwsgi
 =============================
 
 A custom jail/namespace plugin for uwsgi, requires Linux kernel >= 3.8 and CONFIG_USER_NS enabled in the kernel (as well
-as the other CONFIG_*_NS options). It's hardcoded to only my use case.
+as the other CONFIG_*_NS options). It's hardcoded to be practical to my own use case.
 
 
 Features
@@ -18,7 +18,7 @@ Features
  - /usr is a read-only bind mount of system /usr
  - /proc, /dev (zero, urandom, null, random), /sys?, /dev/shm?
  - /var, /tmp (just mkdir them?)
- - /bin, /sbin, /lib, /lib64 are links to /usr/bin
+ - /bin, /sbin, /lib, /lib64 are links to `/usr/*`
  - chdir /
 
 
